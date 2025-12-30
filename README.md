@@ -1,0 +1,108 @@
+# Chezweb
+
+Chezweb is a lightweight, Flask-inspired web framework for **Chez Scheme**. It provides a simple and expressive API for building web applications and APIs, leveraging the high performance of Chez Scheme and the asynchronous I/O capabilities of `libuv`.
+
+## 🚀 Features
+
+- **Flask-like Routing**: Intuitive API for defining routes (`app-get`, `app-post`, etc.) with URL parameter support.
+- **Middleware Support**: Extensible middleware system, including built-in Logger, CORS, and Static File handlers.
+- **Blueprints**: Modularize your application into reusable components.
+- **JSON Support**: Seamless JSON parsing and encoding for building RESTful APIs.
+- **Template Engine**: Integrated HTML template rendering.
+- **High Performance**: Built on top of `libuv` bindings for efficient, non-blocking I/O.
+- **Pure Scheme**: Written entirely in Chez Scheme, providing a native experience.
+
+## 📋 Requirements
+
+- **Chez Scheme**: Version 9.5 or later.
+- **libuv**: A multi-platform support library with a focus on asynchronous I/O.
+
+## 🔧 Installation
+
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/your-username/chezweb.git
+    cd chezweb
+    ```
+
+2.  **Install dependencies**:
+    Ensure `libuv` is installed on your system.
+    - **Ubuntu/Debian**: `sudo apt-get install libuv1-dev`
+    - **macOS**: `brew install libuv`
+    - **Fedora**: `sudo dnf install libuv-devel`
+
+3.  **Build the project**:
+    ```bash
+    ./build.sh
+    ```
+
+## 🚦 Quick Start
+
+Create a file named `hello.ss`:
+
+```scheme
+#!/usr/bin/env scheme-script
+(import (chezscheme) (chezweb))
+
+(define app (make-app))
+
+(app-get app "/"
+  (lambda (req)
+    (html "<h1>Hello, Chezweb!</h1>")))
+
+(app-run app '((host . "127.0.0.1") (port . 5000) (debug . #t)))
+```
+
+Run your application:
+```bash
+./run.sh
+```
+Visit `http://localhost:5000` in your browser.
+
+## 📖 Basic Usage
+
+### Routing with Parameters
+```scheme
+(app-get app "/hello/<name>"
+  (lambda (req)
+    (let ([name (assoc-ref (request-params req) 'name)])
+      (html (format "<h1>Hello, ~a!</h1>" name)))))
+```
+
+### JSON APIs
+```scheme
+(app-get app "/api/data"
+  (lambda (req)
+    (json-response `((status . "success") (data . #(1 2 3))))))
+```
+
+### Using Blueprints
+```scheme
+(define auth-bp (make-blueprint "auth" "/auth"))
+
+(blueprint-get auth-bp "/login"
+  (lambda (req) (html "Login Page")))
+
+(app-register-blueprint app auth-bp)
+```
+
+### Templates
+```scheme
+(app-get app "/profile"
+  (lambda (req)
+    (render-file "templates/profile.html" `((username . "Alice")))))
+```
+
+## 🛠️ Development
+
+- **Build**: `./build.sh` compiles all library files.
+- **Run**: `./run.sh` starts the example application in `examples/app.ss`.
+- **Clean**: `make clean` Remove the compiled `*.so` files.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request or open an issue.
+
+## 📄 License
+
+This project is licensed under the MIT License.
