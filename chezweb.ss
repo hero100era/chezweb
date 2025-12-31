@@ -26,6 +26,8 @@
     request-params
     request-query-params
     request-form-data
+    request-form
+    request-files
     request-json-body
     request-cookies
     request-get-header

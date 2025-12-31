@@ -14,15 +14,19 @@
 
     request-query-params
     request-form-data
+    request-form
+    request-files
     request-json-body
     request-cookies
     request-get-header
 
-    parse-http-request)
+    parse-http-request
+    request-complete?)
 
   (import (chezscheme)
           (utils helpers)
           (utils url)
+          (utils multipart)
           (utils json))
 
   ;; Request record with protocol for custom constructor
@@ -36,13 +40,14 @@
       (mutable params)           ; URL params from routing
       (mutable cached-query)     ; Lazy parsed query params
       (mutable cached-form)      ; Lazy parsed form data
+      (mutable cached-files)     ; Lazy parsed files
       (mutable cached-json)      ; Lazy parsed JSON body
       (mutable cached-cookies))  ; Lazy parsed cookies
     (protocol
       (lambda (new)
         (lambda (method path query-string headers body)
           (new method path query-string headers body
-               '() #f #f #f #f)))))
+               '() #f #f #f #f #f)))))
 
   ;; Parse HTTP request from string
   (define (parse-http-request data)
@@ -99,14 +104,43 @@
 
   ;; Get/parse form data (lazy)
   (define (request-form-data req)
-    (or (request-cached-form req)
-        (let* ([content-type (request-get-header req "content-type")]
-               [form (if (and content-type
-                             (string-contains content-type "application/x-www-form-urlencoded"))
-                        (parse-query-string (request-body req))
-                        '())])
-          (request-cached-form-set! req form)
-          form)))
+    (ensure-parsed-body! req)
+    (request-cached-form req))
+
+  ;; Get/parse files (lazy)
+  (define (request-files req)
+    (ensure-parsed-body! req)
+    (request-cached-files req))
+
+  ;; Convenience wrapper for form data
+  (define (request-form req)
+    (request-form-data req))
+
+  ;; Helper to ensure body is parsed (lazy)
+  (define (ensure-parsed-body! req)
+    (unless (request-cached-form req)
+      (let* ([content-type (request-get-header req "content-type")]
+             [form '()]
+             [files '()])
+        (cond
+          [(and content-type (string-contains content-type "application/x-www-form-urlencoded"))
+           (set! form (parse-query-string (request-body req)))]
+          [(and content-type (string-contains content-type "multipart/form-data"))
+           (let ([boundary (extract-boundary content-type)])
+             (if boundary
+                 (let ([parts (parse-multipart-data (request-body req) boundary)])
+                   (set! form (filter (lambda (p) (string? (cdr p))) parts))
+                   (set! files (filter (lambda (p) (list? (cdr p))) parts)))
+                 '()))])
+        (request-cached-form-set! req form)
+        (request-cached-files-set! req files))))
+
+  ;; Extract boundary from Content-Type header
+  (define (extract-boundary content-type)
+    (let ([start (string-contains content-type "boundary=")])
+      (if start
+          (substring content-type (+ start 9) (string-length content-type))
+          #f)))
 
   ;; Get/parse JSON body (lazy)
   (define (request-json-body req)
@@ -135,4 +169,22 @@
                            '())])
           (request-cached-cookies-set! req cookies)
           cookies)))
+  ;; Check if request is complete (including body based on Content-Length)
+  (define (request-complete? data)
+    (let ([header-end (string-contains data "\r\n\r\n")])
+      (if (not header-end)
+          #f
+          (let* ([headers-str (substring data 0 header-end)]
+                 [lines (string-split headers-str "\r\n")])
+            (if (null? lines)
+                #f
+                (let* ([headers (parse-headers (cdr lines))]
+                       [content-length-str (assoc-ref headers "content-length")])
+                  (if (not content-length-str)
+                      #t ; No content-length, assume complete if headers are done
+                      (let ([content-length (string->number content-length-str)])
+                        (if (not content-length)
+                            #t
+                            (let ([body-len (- (string-length data) (+ header-end 4))])
+                              (>= body-len content-length)))))))))))
 )

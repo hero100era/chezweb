@@ -23,7 +23,9 @@
     ;; Other utilities
     format-number
     pad-zero
-    random-string)
+    random-string
+    bytevector->latin-1-string
+    latin-1-string->bytevector)
 
   (import (chezscheme))
 
@@ -185,4 +187,26 @@
               (loop (+ i 1)
                     (cons (string-ref chars (random (string-length chars)))
                           result)))))))
+
+  ;; Convert bytevector to string using Latin-1 mapping (safe for binary)
+  (define (bytevector->latin-1-string bv)
+    (let* ([len (bytevector-length bv)]
+           [s (make-string len)])
+      (let loop ([i 0])
+        (if (>= i len)
+            s
+            (begin
+              (string-set! s i (integer->char (bytevector-u8-ref bv i)))
+              (loop (+ i 1)))))))
+
+  ;; Convert string to bytevector using Latin-1 mapping (safe for binary)
+  (define (latin-1-string->bytevector s)
+    (let* ([len (string-length s)]
+           [bv (make-bytevector len)])
+      (let loop ([i 0])
+        (if (>= i len)
+            bv
+            (begin
+              (bytevector-u8-set! bv i (char->integer (string-ref s i)))
+              (loop (+ i 1)))))))
 )

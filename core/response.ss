@@ -164,11 +164,11 @@
         status-line
         header-lines
         "\r\n"
-        (if (string? body) body (utf8->string body)))))
+        (if (string? body) body (bytevector->latin-1-string body)))))
 
   ;; Convert response to bytevector
   (define (response->bytevector resp)
-    (string->utf8 (response->string resp)))
+    (latin-1-string->bytevector (response->string resp)))
 
   ;; ----- Convenience Constructors -----
 

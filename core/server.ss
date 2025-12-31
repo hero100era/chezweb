@@ -9,6 +9,7 @@
 
   (import (chezscheme)
           (ffi libuv)
+          (utils helpers)
           (core request)
           (core response))
 
@@ -62,9 +63,15 @@
             ;; Data received
             [(> nread 0)
              (let* ([data-bv (make-bytevector-from-foreign base nread)]
-                    [data-str (utf8->string data-bv)])
+                    [data-str (bytevector->latin-1-string data-bv)]
+                    [client (hashtable-ref (http-server-clients server) stream #f)])
                (foreign-free base)
-               (handle-request server stream data-str))]
+               (when client
+                 (let ([new-buffer (string-append (http-client-buffer client) data-str)])
+                   (http-client-buffer-set! client new-buffer)
+                   (when (request-complete? new-buffer)
+                     (handle-request server stream new-buffer)
+                     (http-client-buffer-set! client "")))))]
 
             ;; nread == 0, do nothing
             [else
