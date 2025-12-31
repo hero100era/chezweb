@@ -55,7 +55,7 @@ Create a file named `hello.ss`:
 
 Run your application:
 ```bash
-./run.sh
+scheme hello.ss
 ```
 Visit `http://localhost:5000` in your browser.
 
